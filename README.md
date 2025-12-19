@@ -30,6 +30,7 @@ An AI-based Applicant Tracking System (ATS) that compares resumes with predefine
 
 ## 📂 Project Structure
 AI_ATS_Project/
+
 │
 ├── streamlit_app.py
 ├── parser/
