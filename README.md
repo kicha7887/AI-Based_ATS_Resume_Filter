@@ -54,7 +54,7 @@ AI_ATS_Project/
 ## ⚙️ Installation & Setup
 
 ### 1️⃣ Clone the Repository (cmd)
-git clone https://github.com/your-username/AI_ATS_Resume_Filter.git
+git clone https://github.com/kicha7887/AI-Based_ATS_Resume_Filter
 cd AI_ATS_Resume_Filter
 
 ### 2️⃣ Create Virtual Environment (Optional)
