@@ -13,3 +13,4 @@ def decrypt_file(data: bytes) -> bytes:
     else:
         # Data is already plain
         return data
+
