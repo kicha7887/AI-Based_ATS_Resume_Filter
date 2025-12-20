@@ -3,3 +3,5 @@ scikit-learn
 plotly
 PyPDF2
 python-docx
+pdfminer.six
+
