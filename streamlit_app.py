@@ -1,215 +1,255 @@
 import streamlit as st
 import plotly.graph_objects as go
-import pandas as pd
 import os
 import shutil
+import re
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 from parser.resume_parser import parse_resumes
 from matching.matcher import match_resumes
 
-# ---------------- PAGE CONFIG ----------------
-st.set_page_config(page_title="ATS Resume Filter Report", layout="wide")
 
-st.markdown(
-    "<h1 style='text-align:center;'>ATS Resume Filter Report</h1>",
-    unsafe_allow_html=True
-)
+# ================= PAGE CONFIG =================
+st.set_page_config(page_title="AI-Based ATS", layout="wide")
 
-# ---------------- DOMAIN & ROLE CONFIG ----------------
-DOMAINS = {
-    "Data Science": [
-        "Data Scientist", "ML Engineer", "NLP Engineer",
-        "Data Analyst", "AI Researcher"
-    ],
-    "Software Development": [
-        "Python Developer", "Backend Developer",
-        "Fullstack Developer", "Java Developer",
-        "Software Engineer"
-    ],
-    "Cloud & DevOps": [
-        "Cloud Engineer", "DevOps Engineer",
-        "AWS Engineer", "Site Reliability Engineer",
-        "Infrastructure Engineer"
-    ],
-    "Cybersecurity": [
-        "Security Analyst", "Penetration Tester",
-        "SOC Analyst", "Network Security Engineer",
-        "Ethical Hacker"
-    ],
-    "Web Development": [
-        "Frontend Developer", "React Developer",
-        "UI UX Designer", "Web Developer",
-        "JavaScript Developer"
-    ]
+# ================= SESSION STATE =================
+if "report_generated" not in st.session_state:
+    st.session_state.report_generated = False
+if "score" not in st.session_state:
+    st.session_state.score = 0
+
+
+# ================= THEME & HOVER FIX =================
+st.markdown("""
+<style>
+/* -------- BACKGROUND -------- */
+[data-testid="stAppViewContainer"] {
+    background: radial-gradient(circle at top right, #2b1a5c, #05030c 65%);
+    color: white;
 }
 
-# ---------------- DOMAIN SELECTION ----------------
-st.subheader("🧠 Select Job Domain")
-selected_domain = st.selectbox(
-    "Choose Domain",
-    ["-- Select Domain --"] + list(DOMAINS.keys())
-)
+header, footer {visibility: hidden;}
 
-# ---------------- ROLE SELECTION ----------------
-selected_role = None
+h1, h2, h3 {
+    color: white;
+    font-weight: 600;
+}
+
+label {
+    color: #d1d5ff !important;
+}
+
+/* ================= ALL BUTTONS BASE ================= */
+button[kind="primary"],
+button[kind="secondary"] {
+    background: linear-gradient(135deg, #7f00ff, #a855f7) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 16px !important;
+    transition: all 0.3s ease-in-out !important;
+}
+
+/* ================= ALL BUTTONS HOVER GLOW ================= */
+button[kind="primary"]:hover,
+button[kind="secondary"]:hover {
+    transform: scale(1.08);
+
+    /* PURPLE NEON GLOW */
+     box-shadow:
+        0 0 6px rgba(168, 85, 247, 0.45),
+        0 0 14px rgba(168, 85, 247, 0.55),
+        0 0 26px rgba(168, 85, 247, 0.65);
+
+    filter: drop-shadow(0 0 5px rgba(168, 85, 247, 0.6));
+}
+
+/* ================= FEEDBACK BUTTON BASE ================= */
+#feedback-section button {
+    background: linear-gradient(135deg, #7f00ff, #a855f7) !important;
+    color: white !important;
+    border: none !important;
+    font-size: 26px !important;
+    padding: 18px 26px !important;
+    border-radius: 22px !important;
+    transition: all 0.3s ease-in-out !important;
+}
+
+/* ================= FEEDBACK BUTTON HOVER ================= */
+#feedback-section button:hover {
+    transform: scale(1.25);
+
+    /* STRONGER GLOW */
+     box-shadow:
+        0 0 6px rgba(168, 85, 247, 0.45),
+        0 0 14px rgba(168, 85, 247, 0.55),
+        0 0 26px rgba(168, 85, 247, 0.65);
+
+    filter: drop-shadow(0 0 5px rgba(168, 85, 247, 0.6));
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+
+# ================= HEADER =================
+st.markdown("""
+<h1 style="text-align:center; font-size:60px;">🤖🙌</h1>
+<h1 style="text-align:center;">AI-Based ATS Resume Filter System</h1>
+<p style="text-align:center; color:#c7c9ff;">
+Smart resume screening using NLP & AI techniques
+</p>
+""", unsafe_allow_html=True)
+
+
+# ================= DOMAIN CONFIG =================
+DOMAINS = {
+    "Data Science": ["Data Scientist", "ML Engineer", "NLP Engineer", "Data Analyst", "AI Researcher"],
+    "Software Development": ["Python Developer", "Backend Developer", "Fullstack Developer", "Java Developer", "Software Engineer"],
+    "Cloud DevOps": ["Cloud Engineer", "DevOps Engineer", "AWS Engineer", "Site Reliability Engineer", "Infrastructure Engineer"],
+    "Cybersecurity": ["Security Analyst", "Penetration Tester", "SOC Analyst", "Network Security Engineer", "Ethical Hacker"],
+    "Web Development": ["Frontend Developer", "React Developer", "UI UX Designer", "Web Developer", "JavaScript Developer"]
+}
+
+
+# ================= ATS METRICS =================
+def calculate_ats_metrics(resume_text, job_description):
+    resume_text = resume_text.lower()
+    job_description = job_description.lower()
+
+    jd_words = set(re.findall(r'\b\w+\b', job_description))
+    resume_words = re.findall(r'\b\w+\b', resume_text)
+
+    keyword_pct = min(int(len(jd_words & set(resume_words)) / max(len(jd_words), 1) * 100), 100)
+
+    tfidf = TfidfVectorizer().fit_transform([resume_text, job_description])
+    similarity = cosine_similarity(tfidf[0:1], tfidf[1:2])[0][0]
+
+    return {
+        "Keyword Match": keyword_pct,
+        "Skill Relevance": keyword_pct,
+        "Contextual Similarity": int(similarity * 100),
+        "Term Frequency": min(sum(resume_words.count(w) for w in jd_words) * 2, 100),
+        "Readability": 100 if len(resume_text.strip()) > 300 else 50
+    }
+
+
+# ================= DOMAIN & ROLE =================
+st.subheader("🧠 Job Selection")
+
+col_d, col_r = st.columns(2)
+
+with col_d:
+    domain = st.selectbox("Select Domain", ["-- Select Domain --"] + list(DOMAINS.keys()))
+
+with col_r:
+    role = None
+    if domain != "-- Select Domain --":
+        role = st.selectbox("Select Role", ["-- Select Role --"] + DOMAINS[domain])
+
 job_description = None
 
-if selected_domain != "-- Select Domain --":
-    st.subheader("🧩 Select Job Role")
-    selected_role = st.selectbox(
-        "Choose Role",
-        ["-- Select Role --"] + DOMAINS[selected_domain]
-    )
 
-# ---------------- LOAD JOB DESCRIPTION ----------------
-if selected_role and selected_role != "-- Select Role --":
-    jd_path = f"job_descriptions/{selected_domain.replace(' ', '_')}/{selected_role.replace(' ', '_')}.txt"
+# ================= JOB DESCRIPTION =================
+if role and role != "-- Select Role --":
+    jd_path = f"job_descriptions/{domain.replace(' ', '_')}/{role.replace(' ', '_')}.txt"
 
     if not os.path.exists(jd_path):
-        st.error("❌ Job description file not found.")
+        st.error("❌ Job description not found")
         st.stop()
 
-    with open(jd_path, "r", encoding="utf-8") as f:
-        job_description = f.read()
+    job_description = open(jd_path, encoding="utf-8").read()
+    st.subheader("📄 Job Description")
+    st.text_area("JD", job_description, height=180, disabled=True)
 
-    st.subheader("📄 Job Description (Auto-loaded)")
-    st.text_area(
-        "Job Description",
-        job_description,
-        height=220,
-        disabled=True
-    )
 
-# ---------------- UPLOAD RESUMES ----------------
+# ================= UPLOAD & PROCESS =================
 if job_description:
     st.subheader("📤 Upload Resumes")
-    uploaded_files = st.file_uploader(
-        "Upload PDF/DOCX resumes",
-        type=["pdf", "docx"],
-        accept_multiple_files=True
-    )
+    uploaded = st.file_uploader("Upload PDF/DOCX resumes", ["pdf", "docx"], accept_multiple_files=True)
 
-    if not os.path.exists("resumes"):
-        os.makedirs("resumes")
+    if os.path.exists("resumes"):
+        shutil.rmtree("resumes")
+    os.makedirs("resumes")
 
-    if uploaded_files:
-        for file in uploaded_files:
-            with open(os.path.join("resumes", file.name), "wb") as f:
-                f.write(file.getbuffer())
+    if uploaded:
+        for f in uploaded:
+            with open(f"resumes/{f.name}", "wb") as file:
+                file.write(f.getbuffer())
 
-    # ---------------- GENERATE ATS REPORT ----------------
-    if st.button("Generate ATS Report"):
-
-        resumes = parse_resumes("resumes/")
-        if not resumes:
-            st.error("❌ No readable text found in uploaded resumes.")
-            st.stop()
-
+    if st.button("🚀 Generate ATS Report"):
+        resumes = parse_resumes("resumes")
         scores = match_resumes(resumes, job_description)
+
         if not scores:
-            st.error("❌ Unable to calculate scores.")
+            st.error("❌ ATS could not evaluate resumes")
             st.stop()
 
-        top_resume, score = max(scores.items(), key=lambda x: x[1])
+        name, score = max(scores.items(), key=lambda x: x[1])
+        st.session_state.report_generated = True
+        st.session_state.score = score
 
-        # ---------------- PASS / FAIL LOGIC ----------------
-        PASS_THRESHOLD = 85
-        status = "PASS" if score >= PASS_THRESHOLD else "FAIL"
-        status_color = "#4CAF50" if score >= PASS_THRESHOLD else "#F44336"
+        status = "PASS" if score >= 85 else "FAIL"
+        color = "#4CAF50" if status == "PASS" else "#F44336"
 
-        # ===================== LAYOUT =====================
-        col1, col2 = st.columns([1, 1.3])
+        col1, col2 = st.columns([1.1, 1])
 
-        # ---------------- RESUME SCORE (DONUT) ----------------
         with col1:
-            st.subheader("Resume Score")
-
-            donut = go.Figure(
-                data=[
-                    go.Pie(
-                        values=[score, 100 - score],
-                        hole=0.75,
-                        marker_colors=[status_color, "#E0E0E0"],
-                        textinfo="none"
-                    )
-                ]
-            )
-
+            donut = go.Figure(go.Pie(
+                values=[score, 100-score],
+                hole=0.75,
+                marker_colors=[color, "#2C2F36"],
+                textinfo="none"
+            ))
             donut.update_layout(
-                annotations=[{
-                    "text": f"<b>{score}%</b><br>{status}",
-                    "font": {"size": 24, "color": status_color},
-                    "showarrow": False
-                }],
+                annotations=[dict(
+                    text=f"<b>{score:.2f}%</b><br>{status}",
+                    x=0.5, y=0.5,
+                    font=dict(size=40, color="white"),
+                    showarrow=False
+                )],
                 showlegend=False,
-                height=350
+                height=420
             )
-
             st.plotly_chart(donut, use_container_width=True)
 
-        # ---------------- SKILLS MATCH ----------------
         with col2:
-            st.subheader("Skills Match")
+            st.subheader("📊 ATS Metrics")
+            for k, v in calculate_ats_metrics(resumes[name], job_description).items():
+                st.markdown(f"**{k}**")
+                st.progress(v)
 
-            skills = {
-                "Python": 80,
-                "Data Analysis": 75,
-                "SQL": 70,
-                "Machine Learning": 65,
-                "Project Management": 60
-            }
-
-            for skill, val in skills.items():
-                st.markdown(f"**{skill}**")
-                st.progress(val)
-
-        # ===================== SECOND ROW =====================
-        col3, col4 = st.columns(2)
-
-        # ---------------- EXPERIENCE ----------------
-        with col3:
-            st.subheader("Experience")
-
-            exp_df = pd.DataFrame({
-                "Level": ["Entry", "Mid", "Senior", "Lead"],
-                "Score": [1, 2, 3, 4]
-            })
-
-            exp_fig = go.Figure(
-                data=[go.Bar(
-                    x=exp_df["Level"],
-                    y=exp_df["Score"],
-                    marker_color="#607D8B"
-                )]
-            )
-
-            exp_fig.update_layout(
-                yaxis=dict(visible=False),
-                height=300
-            )
-
-            st.plotly_chart(exp_fig, use_container_width=True)
-            st.markdown("<h3 style='text-align:center;'>5+ Years</h3>", unsafe_allow_html=True)
-
-        # ---------------- PROJECTS ----------------
-        with col4:
-            st.subheader("Projects")
-
-            project_fig = go.Figure(
-                data=[
-                    go.Pie(
-                        labels=["AI Development", "Data Analysis", "Automation"],
-                        values=[45, 35, 20],
-                        marker_colors=["#2196F3", "#FF9800", "#FFC107"]
-                    )
-                ]
-            )
-
-            project_fig.update_layout(height=300)
-            st.plotly_chart(project_fig, use_container_width=True)
-
-        # ---------------- CLEANUP ----------------
         shutil.rmtree("resumes")
-        os.makedirs("resumes")
 
-#run: streamlit run streamlit_app.py
+
+# ================= AI SUGGESTION + FEEDBACK =================
+if st.session_state.report_generated:
+    st.markdown("---")
+
+    center = st.columns([1, 2, 1])[1]
+
+    with center:
+        st.subheader("🧠 AI Suggestion")
+
+        if st.session_state.score >= 85:
+            st.success("✅ This resume strongly matches the job requirements.")
+        else:
+            st.warning("⚠️ Improve keyword relevance, skills alignment, and project descriptions.")
+
+        st.markdown("---")
+        st.subheader("💬 Feedback")
+
+        st.markdown('<div id="feedback-section">', unsafe_allow_html=True)
+        f1, f2, f3 = st.columns(3)
+
+        with f1:
+            st.button("😞 Bad", key="fb_bad")
+
+        with f2:
+            st.button("🙂 Good", key="fb_good")
+
+        with f3:
+            st.button("🤩 Excellent", key="fb_excellent")
+
+        st.markdown('</div>', unsafe_allow_html=True)
