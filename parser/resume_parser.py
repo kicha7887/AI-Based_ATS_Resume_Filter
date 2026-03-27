@@ -59,3 +59,4 @@ def parse_resumes(resume_folder):
         resumes[filename] = text
 
     return resumes
+
