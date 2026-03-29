@@ -1,6 +1,6 @@
-# 🎯 AI ATS Suite - Resume Tools
+# 🎯 AI-based ATS System - Resume Tools
 
-Welcome to the **AI ATS Suite**, a modern, professional, and dark-themed Streamlit application tailored for job seekers and recruiters. This application serves as a comprehensive toolkit for building resumes and optimizing them for Applicant Tracking Systems (ATS).
+Welcome to the **AI ATS System**, a modern, professional, and dark-themed Streamlit application tailored for job seekers and recruiters. This application serves as a comprehensive toolkit for building resumes and optimizing them for Applicant Tracking Systems (ATS).
 
 ## 🚀 Features
 
