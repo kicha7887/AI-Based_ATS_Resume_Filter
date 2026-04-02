@@ -71,13 +71,13 @@ def render_resume_maker():
         
         col1, col2 = st.columns(2)
         with col1:
-            full_name = st.text_input("Full Name *", value=st.session_state.resume_data["full_name"], placeholder="John Doe")
-            email = st.text_input("Email *", value=st.session_state.resume_data["email"], placeholder="john@email.com")
-            phone = st.text_input("Phone", value=st.session_state.resume_data["phone"], placeholder="+1 234 567 8900")
+            full_name = st.text_input("Full Name *", value=st.session_state.resume_data["full_name"], placeholder="Enter Your Full Name")
+            email = st.text_input("Email *", value=st.session_state.resume_data["email"], placeholder="Enter Your Email")
+            phone = st.text_input("Phone", value=st.session_state.resume_data["phone"], placeholder="Enter Your Phone Number")
         with col2:
-            location = st.text_input("Location", value=st.session_state.resume_data["location"], placeholder="New York, NY")
-            linkedin = st.text_input("LinkedIn", value=st.session_state.resume_data["linkedin"], placeholder="linkedin.com/in/johndoe")
-            portfolio = st.text_input("Portfolio/Website", value=st.session_state.resume_data["portfolio"], placeholder="johndoe.com")
+            location = st.text_input("Location", value=st.session_state.resume_data["location"], placeholder="Enter Your Location")
+            linkedin = st.text_input("LinkedIn", value=st.session_state.resume_data["linkedin"], placeholder="Enter Your LinkedIn Profile URL")
+            portfolio = st.text_input("Portfolio/Website", value=st.session_state.resume_data["portfolio"], placeholder="Enter Your Portfolio URL")
         
         # Update session state
         st.session_state.resume_data["full_name"] = full_name
@@ -94,7 +94,7 @@ def render_resume_maker():
         summary = st.text_area(
             "Write a brief professional summary",
             value=st.session_state.resume_data["summary"],
-            placeholder="Results-driven professional with X years of experience in...",
+            placeholder="Write your role summary",
             height=100
         )
         st.session_state.resume_data["summary"] = summary
